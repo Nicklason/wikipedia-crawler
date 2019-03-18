@@ -1,0 +1,28 @@
+{
+  "name": "wikipedia-crawler",
+  "version": "0.1.0",
+  "description": "Download wikis as plain text",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon app.js",
+    "lint": "eslint ./",
+    "release": "np --no-cleanup --no-publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nicklason/wikipedia-crawler.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Nicklason/wikipedia-crawler/issues"
+  },
+  "homepage": "https://github.com/Nicklason/wikipedia-crawler#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^5.15.3",
+    "eslint-config-google": "^0.12.0",
+    "nodemon": "^1.18.10"
+  },
+  "private": true
+}
