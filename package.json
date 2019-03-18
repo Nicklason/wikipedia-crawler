@@ -18,7 +18,18 @@
     "url": "https://github.com/Nicklason/wikipedia-crawler/issues"
   },
   "homepage": "https://github.com/Nicklason/wikipedia-crawler#readme",
-  "dependencies": {},
+  "_moduleAliases": {
+    "@root": ".",
+    "lib": "lib"
+  },
+  "dependencies": {
+    "crawler": "^1.2.0",
+    "dotenv": "^7.0.0",
+    "graceful-fs": "^4.1.15",
+    "is-url": "^1.2.4",
+    "module-alias": "^2.2.0",
+    "path": "^0.12.7"
+  },
   "devDependencies": {
     "eslint": "^5.15.3",
     "eslint-config-google": "^0.12.0",
