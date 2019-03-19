@@ -1,9 +1,17 @@
 require('dotenv').config();
 require('module-alias/register');
 
+const fs = require('graceful-fs');
+const path = require('path');
+const replaceall = require('replaceall');
+
 const crawler = require('lib/crawler');
 
 let pages = 0;
+
+const filesDir = path.join(__dirname, './files');
+const wikiPath = path.join(filesDir, '/wikidump.txt');
+const urlPath = path.join(filesDir, '/urldump.txt');
 
 require('lib/init')(function (err) {
     if (err) {
@@ -54,6 +62,8 @@ function pageResult (err, res, done) {
         }
     });
 
+    const wikiTitle = $('#firstHeading').text();
+
     let wikiText = '';
 
     // Gå igennem alle p elementer som er en del af wiki teksten
@@ -69,13 +79,13 @@ function pageResult (err, res, done) {
         // Lav teksten fra links til andre wiki sider om til "et ord", hjælper med f.eks. navne
         $(this).children('a').not('.new').each(function () {
             // console.log($(this).attr('href'));
-            const wikiTitle = $(this).text();
+            const title = $(this).text();
 
             // Fjern tekst i parenteser, erstat mellemrum og bindestreg med understreg
-            const cleanedTitle = wikiTitle.replace(/ *\([^)]*\) */g, '').replace(/[ -]/g, '_');
+            const cleanedTitle = title.replace(/ *\([^)]*\) */g, '').replace(/[ -]/g, '_');
 
             // Erstat alle steder hvor at titlen er set
-            text = text.replace(new RegExp(wikiTitle, 'g'), cleanedTitle);
+            text = replaceall(title, cleanedTitle, text);
         });
 
         // Fjern referencer
@@ -86,8 +96,13 @@ function pageResult (err, res, done) {
         // Lav alt tekst lowercase
         text = text.toLowerCase();
 
+        // Sørg for at alle steder hvor titlen er skrevet, at det også er skrevet som "et ord"
+        text = replaceall(wikiTitle.toLowerCase(), wikiTitle.toLowerCase().replace(/ /g, '_'), text);
+
+        // TODO: Fiks problem med "udregne _værdierne af _ bru..."
+
         // Fjern bindestreger som står for sig selv, erstat bindestreg med understreg
-        text = text.replace(/ -/g, '').replace(/- /g, '').replace(/-/g, '_');
+        text = text.replace(/ -/g, ' ').replace(/- /g, ' ').replace(/-/g, '_')
 
         // Fjern tegn som ikke indgår i alfabetet og ikke er tal
         text = text.split('').filter(function (value) {
@@ -114,10 +129,13 @@ function pageResult (err, res, done) {
         }).join(' ');
 
         // Fjerner mellemrum hvis der er for mange
-        text = text.replace(/\s+/g, ' ');
+        text = text.replace(/\s+/g, ' ').trim();
+
+        // Fikser også et problem med " _ " i teksten som kan ske i nogle tilfælde
+        text = text.replace(/ _ /g, ' ');
 
         // Hvis dette ikke er starten på en tekst, så tilføj et mellemrum
-        if (wikiText.lenght !== 0) {
+        if (wikiText !== '') {
             text = ' ' + text;
         }
 
@@ -126,4 +144,7 @@ function pageResult (err, res, done) {
     });
 
     done();
+
+    fs.appendFileSync(urlPath, res.request.uri.href + '\n');
+    fs.appendFileSync(wikiPath, wikiText);
 }
