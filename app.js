@@ -102,7 +102,7 @@ function pageResult (err, res, done) {
         // TODO: Fiks problem med "udregne _værdierne af _ bru..."
 
         // Fjern bindestreger som står for sig selv, erstat bindestreg med understreg
-        text = text.replace(/ -/g, ' ').replace(/- /g, ' ').replace(/-/g, '_')
+        text = text.replace(/ -/g, ' ').replace(/- /g, ' ').replace(/-/g, '_');
 
         // Fjern tegn som ikke indgår i alfabetet og ikke er tal
         text = text.split('').filter(function (value) {
