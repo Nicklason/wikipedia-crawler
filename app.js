@@ -7,7 +7,8 @@ const replaceall = require('replaceall');
 
 const crawler = require('lib/crawler');
 
-let pages = 0;
+let pagesTotal = 0;
+let pagesSinceStart = 0;
 
 const filesDir = path.join(__dirname, './files');
 const wikiPath = path.join(filesDir, '/wikidump.txt');
@@ -19,17 +20,32 @@ require('lib/init')(function (err) {
         throw err;
     }
 
+    if (crawler.options.skipDuplicates && fs.existsSync(urlPath)) {
+        const urls = fs.readFileSync(urlPath, 'utf8').split('\n');
+
+        // -1 fordi jeg vil ikke have den sidste linje med da den er tom
+        for (let i = 0; i < urls.length - 1; i++) {
+            const url = urls[i];
+            crawler.seen.exists({ uri: url });
+        }
+
+        pagesTotal += urls.length - 1;
+    }
+
     // Sæt callback funktion
     crawler.options.callback = pageResult;
 
     // Start crawl...
     if (process.env.WIKI_PAGE) {
         // ...fra en wiki side
-        crawler.queue(process.env.WIKI_PAGE);
-    } else {
-        // ...fra startsiden
-        crawler.queue(process.env.WIKI_HOST);
+        const added = crawler.queue(process.env.WIKI_PAGE);
+        if (added) {
+            return;
+        }
     }
+
+    // ...fra startsiden
+    crawler.queue(process.env.WIKI_HOST);
 });
 
 /**
@@ -45,11 +61,12 @@ function pageResult (err, res, done) {
         return;
     }
 
-    pages++;
+    pagesTotal++;
+    pagesSinceStart++;
 
     const $ = res.$;
     // eslint-disable-next-line no-console
-    console.log($('title').text(), pages);
+    console.log($('title').text(), pagesTotal, pagesSinceStart);
 
     // Gå igennem alle a elementer på siden
     $('a').each(function () {
@@ -61,8 +78,6 @@ function pageResult (err, res, done) {
             crawler.queue(link);
         }
     });
-
-    const wikiTitle = $('#firstHeading').text();
 
     let wikiText = '';
 
@@ -76,18 +91,6 @@ function pageResult (err, res, done) {
 
         let text = $(this).text().trim();
 
-        // Lav teksten fra links til andre wiki sider om til "et ord", hjælper med f.eks. navne
-        $(this).children('a').not('.new').each(function () {
-            // console.log($(this).attr('href'));
-            const title = $(this).text();
-
-            // Fjern tekst i parenteser, erstat mellemrum og bindestreg med understreg
-            const cleanedTitle = title.replace(/ *\([^)]*\) */g, '').replace(/[ -]/g, '_');
-
-            // Erstat alle steder hvor at titlen er set
-            text = replaceall(title, cleanedTitle, text);
-        });
-
         // Fjern referencer
         $(this).children('.reference').each(function () {
             text = text.replace($(this).text(), '');
@@ -96,13 +99,10 @@ function pageResult (err, res, done) {
         // Lav alt tekst lowercase
         text = text.toLowerCase();
 
-        // Sørg for at alle steder hvor titlen er skrevet, at det også er skrevet som "et ord"
-        text = replaceall(wikiTitle.toLowerCase(), wikiTitle.toLowerCase().replace(/ /g, '_'), text);
-
-        // TODO: Fiks problem med "udregne _værdierne af _ bru..."
-
         // Fjern bindestreger som står for sig selv, erstat bindestreg med understreg
-        text = text.replace(/ -/g, ' ').replace(/- /g, ' ').replace(/-/g, '_');
+        text = replaceall(' -', ' ', text);
+        text = replaceall('- ', ' ', text);
+        text = replaceall('-', '_', text);
 
         // Fjern tegn som ikke indgår i alfabetet og ikke er tal
         text = text.split('').filter(function (value) {
@@ -132,7 +132,7 @@ function pageResult (err, res, done) {
         text = text.replace(/\s+/g, ' ').trim();
 
         // Fikser også et problem med " _ " i teksten som kan ske i nogle tilfælde
-        text = text.replace(/ _ /g, ' ');
+        text = replaceall(' _ ', ' ', text);
 
         // Hvis dette ikke er starten på en tekst, så tilføj et mellemrum
         if (wikiText !== '') {
